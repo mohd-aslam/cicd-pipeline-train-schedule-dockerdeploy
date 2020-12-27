@@ -1,5 +1,9 @@
 pipeline {
     agent any
+    environment {
+        // Creates variables ARTIFACTORY=joe:supersecret, ARTIFACTORY_USR=joe, ARTIFACTORY_PSW=supersecret
+        DEPLOY = credentials('deploy123')
+    }
     stages {
         stage('Build') {
             steps {
@@ -40,16 +44,15 @@ pipeline {
             }
             steps {
                 milestone(1)
-                withCredentials([usernamePassword(credentialsId: 'deploy', usernameVariable: 'USERNAME', passwordVariable: 'USERPASS')]) {
                     script {
-                        sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$docker_dev_server \"docker pull mohdaslam/train-schedule:${env.BUILD_NUMBER}\""
+                        sh "sshpass -p '$DEPLOY_PSW' -v ssh -o StrictHostKeyChecking=no $DEPLOY_USR@$docker_dev_server \"docker pull mohdaslam/train-schedule:${env.BUILD_NUMBER}\""
                         try {
-                            sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$docker_dev_server \"docker stop train-schedule\""
-                            sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$docker_dev_server \"docker rm train-schedule\""
+                            sh "sshpass -p '$DEPLOY_PSW' -v ssh -o StrictHostKeyChecking=no $DEPLOY_USR@$docker_dev_server \"docker stop train-schedule\""
+                            sh "sshpass -p '$DEPLOY_PSW' -v ssh -o StrictHostKeyChecking=no $DEPLOY_USR@$docker_dev_server \"docker rm train-schedule\""
                         } catch (err) {
                             echo: 'caught error: $err'
                         }
-                        sh "sshpass -p '$USERPASS' -v ssh -o StrictHostKeyChecking=no $USERNAME@$docker_dev_server \"docker run --restart always --name train-schedule -p 8080:8080 -d mohdaslam/train-schedule:${env.BUILD_NUMBER}\""
+                        sh "sshpass -p '$DEPLOY_PSW' -v ssh -o StrictHostKeyChecking=no $DEPLOY_USR@$docker_dev_server \"docker run --restart always --name train-schedule -p 8080:8080 -d mohdaslam/train-schedule:${env.BUILD_NUMBER}\""
                     }
                 }
             }
